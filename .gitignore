@@ -1,0 +1,55 @@
+# 敏感信息
+.env*
+*.key
+*.pem
+*.secret
+
+# 记忆数据库
+memory-lancedb-pro/
+*.lance/
+*.db
+
+# Session 数据
+sessions/
+*.lock
+*.jsonl
+
+# OpenClaw 运行时
+logs/
+cache/
+tmp/
+node_modules/
+
+# 扩展（插件代码不备份，通过 openclaw plugins install 恢复）
+extensions/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 大文件/媒体
+*.mp3
+*.wav
+*.mp4
+*.avi
+
+# 知识库向量数据（太大，重新索引即可）
+skills/knowledge-base/data/
+skills/knowledge-base/vector_store/
+
+# 邮件监控运行时数据
+skills/email-monitor/data/
+skills/shift-reminder/data/
+
+# crontab 运行时
+*.log
+
+# scripts 里的临时文件
+scripts/*.tmp
+
+# Token/凭证
+.youtube_token.json
+.openclaw/workspace-state.json
+.clawhub/
+__pycache__/
+*.pyc

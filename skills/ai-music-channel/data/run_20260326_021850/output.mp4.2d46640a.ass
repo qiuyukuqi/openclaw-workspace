@@ -1,0 +1,53 @@
+[Script Info]
+Title: Lyrics
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Noto Sans CJK SC,28,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,0,2,10,10,80,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,你说爱久了会倦
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,像杯温水放窗前
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,风一吹就变得冷一点
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,话没说完却走远
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,转身那刻你没再看
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,钥匙静静躺在桌面
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,习惯散落满地之间
+Dialogue: 0,0:00.00,0:00.00,Default,,0,0,0,,拾起来只剩从前
+Dialogue: 0,0:00.00,0:01.00,Default,,0,0,0,,给我一杯忘情潮
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,淹没掉你的名字和打扰
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,让回忆全都退潮
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,心像沙写过你又被冲掉
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,给我一杯忘情潮
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,喝到再也记不起拥抱
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,任那一夜一千遍重绕
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,醒来只剩心跳
+Dialogue: 0,0:01.00,0:01.00,Default,,0,0,0,,街角那家老咖啡店
+Dialogue: 0,0:01.00,0:02.00,Default,,0,0,0,,还在播着旧唱片
+Dialogue: 0,0:02.00,0:02.00,Default,,0,0,0,,椅子对着依然是两边
+Dialogue: 0,0:02.00,0:02.00,Default,,0,0,0,,只是少了谁出现
+Dialogue: 0,0:02.00,0:02.00,Default,,0,0,0,,原来越是想要走远
+Dialogue: 0,0:02.00,0:02.00,Default,,0,0,0,,越被画面拉回原点
+Dialogue: 0,0:02.00,0:02.00,Default,,0,0,0,,号码删了又复原
+Dialogue: 0,0:02.00,0:02.00,Default,,0,0,0,,指尖背叛理性的脸
+Dialogue: 0,0:02.00,0:02.00,Default,,0,0,0,,给我一杯忘情潮
+Dialogue: 0,0:02.00,0:03.00,Default,,0,0,0,,淹没掉你的笑和依靠
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,让诺言全部退潮
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,像雨后路边的水纹散掉
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,给我一杯忘情潮
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,喝到再也追不上过往
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,任那昨天一万次重绕
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,醒来学会一个人去撑腰
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,如果能不曾遇见
+Dialogue: 0,0:03.00,0:03.00,Default,,0,0,0,,我会不会比较简单
+Dialogue: 0,0:03.00,0:04.00,Default,,0,0,0,,可谁甘心少活这一段
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,明知道痛还反复试探 (oh)
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,给我一杯忘情潮
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,冲淡这心口翻涌骄傲
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,让你的名字变成一阵风
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,路过就好 别再停靠
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,给我一杯忘情潮
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,喝到终于学会对自己好
+Dialogue: 0,0:04.00,0:04.00,Default,,0,0,0,,当泪水一次一次流干了
+Dialogue: 0,0:04.00,0:05.00,Default,,0,0,0,,我也学会 和你挥手说好
