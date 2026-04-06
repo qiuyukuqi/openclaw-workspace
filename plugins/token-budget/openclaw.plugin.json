@@ -1,0 +1,30 @@
+{
+  "id": "token-budget",
+  "name": "Token Budget Tracker",
+  "description": "Track token usage per session with diminishing returns detection (from Claude Code Token Budget system)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "maxTokensPerSession": {
+        "type": "number",
+        "default": 200000,
+        "description": "Soft token limit per session"
+      },
+      "diminishingThreshold": {
+        "type": "number",
+        "default": 200,
+        "description": "Min new chars in consecutive turns to detect diminishing returns"
+      },
+      "diminishingWindow": {
+        "type": "number",
+        "default": 3,
+        "description": "Consecutive turns below threshold to trigger diminishing"
+      }
+    }
+  }
+}

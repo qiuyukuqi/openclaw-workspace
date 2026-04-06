@@ -1,0 +1,43 @@
+{
+  "id": "safety-guard",
+  "name": "Safety Guard",
+  "description": "AI-powered risk classification for tool calls (inspired by Claude Code YOLO Classifier)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable/disable safety guard"
+      },
+      "dangerousPatterns": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": [
+          "rm -rf /",
+          "rm -rf /*",
+          "dd if=",
+          "mkfs",
+          ":(){ :|:& };:",
+          "> /dev/sd",
+          "chmod -R 777 /",
+          "DROP TABLE",
+          "DROP DATABASE"
+        ],
+        "description": "Dangerous command patterns to always block"
+      },
+      "sensitivePaths": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": [
+          "/etc/shadow",
+          "/etc/passwd",
+          "/root/.ssh",
+          "/root/.env*"
+        ],
+        "description": "Sensitive file paths that require approval"
+      }
+    }
+  }
+}

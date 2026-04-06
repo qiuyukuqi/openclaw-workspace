@@ -1,0 +1,41 @@
+{
+  "id": "proactive-patrol",
+  "name": "Proactive Patrol",
+  "description": "Autonomous monitoring service with proactive alerts (inspired by Claude Code KAIROS/PROACTIVE mode)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable/disable proactive patrol"
+      },
+      "checkIntervalMs": {
+        "type": "number",
+        "default": 300000,
+        "description": "Check interval in milliseconds (default: 5 minutes)"
+      },
+      "quietHoursStart": {
+        "type": "number",
+        "default": 23,
+        "description": "Quiet hours start (hour, 24h format)"
+      },
+      "quietHoursEnd": {
+        "type": "number",
+        "default": 8,
+        "description": "Quiet hours end (hour, 24h format)"
+      },
+      "checks": {
+        "type": "object",
+        "properties": {
+          "cpu": { "type": "boolean", "default": true },
+          "memory": { "type": "boolean", "default": true },
+          "disk": { "type": "boolean", "default": true },
+          "openclaw": { "type": "boolean", "default": true },
+          "cron": { "type": "boolean", "default": true }
+        }
+      }
+    }
+  }
+}

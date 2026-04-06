@@ -1,0 +1,20 @@
+{
+  "id": "code-review",
+  "name": "Code Review",
+  "description": "Three-dimensional code review tool (reuse, quality, efficiency) inspired by Claude Code /simplify skill",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "maxFiles": {
+        "type": "number",
+        "default": 50,
+        "description": "Maximum files to review in one pass"
+      }
+    }
+  }
+}
