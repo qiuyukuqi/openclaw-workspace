@@ -26,15 +26,27 @@ You wake up fresh each session. These files are your continuity:
 
 Capture what matters. Decisions, context, things to remember. Skip the secrets unless asked to keep them.
 
-### 🧠 MEMORY.md - Your Long-Term Memory
+### 🧠 MEMORY.md - Your Long-Term Memory（参考Claude Code Session Memory模板）
 
-- **ONLY load in main session** (direct chats with your human)
-- **DO NOT load in shared contexts** (Discord, group chats, sessions with other people)
+MEMORY.md采用结构化模板，包含以下固定section：
+
+| Section | 用途 |
+|---------|------|
+| 铁律（Iron Rules）| 永远不可违反的核心规则 |
+| 当前状态（Current State）| 正在做什么，下一步是什么 |
+| 常用工作流（Workflow）| 常用命令、脚本、操作顺序 |
+| 错误与修复（Errors & Fixes）| 遇到的错误和修复方法，避免重复踩坑 |
+| 关键项目（Key Projects）| 重要项目、它们的路径和状态 |
+| 关键结果（Key Results）| 用户要求的特定输出，精确记录 |
+| 通用知识（General Knowledge）| 学到的通用技巧、最佳实践 |
+
+**规则：**
+- **ONLY load in main session**（直接和老板的对话）
+- **DO NOT load in shared contexts**（Discord、群聊、其他人的session）
 - This is for **security** — contains personal context that shouldn't leak to strangers
 - You can **read, edit, and update** MEMORY.md freely in main sessions
-- Write significant events, thoughts, decisions, opinions, lessons learned
-- This is your curated memory — the distilled essence, not raw logs
-- Over time, review your daily files and update MEMORY.md with what's worth keeping
+- **每section保持在合理长度**，超限时精简旧条目，保留最重要的
+- **Current State每次对话结束必须更新**——这是跨会话连续性的关键
 
 ### 📝 Write It Down - No "Mental Notes"!
 
@@ -61,6 +73,26 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 5. 涉及服务器配置、部署方式、已安装的服务
 
 宁可多查一次，不要瞎猜。
+
+## 🔌 Circuit Breaker — 熔断机制（源自Claude Code AutoCompact）
+
+当连续失败时，不要无限重试。参考Claude Code的熔断策略：
+
+| 场景 | 最大重试 | 策略 |
+|------|---------|------|
+| API调用（可重试错误）| 3次 | 指数退避，连续3次失败后停止 |
+| 子agent执行 | 2次 | 第二次换不同策略 |
+| 文件操作 | 1次 | 失败就报告，不静默重试 |
+| 工具调用失败 | 1次 | 先memory_recall查已知fix，再决定是否重试 |
+
+**核心原则**：连续3次相同类型的失败 = 停下来思考，不要盲目重试。
+
+## 📊 边际递减检测（源自Claude Code Token Budget）
+
+在长时间运行的子agent任务中，监测输出质量：
+- 如果连续3轮新增有效信息<200字符，说明已进入边际递减状态
+- 此时应停止当前任务并汇报结果，而非继续消耗token
+- 适用于：代码搜索、日志分析、文件扫描等可能无底洞的任务
 
 ## Red Lines
 
@@ -211,18 +243,41 @@ You are free to edit `HEARTBEAT.md` with a short checklist or reminders. Keep it
 - Commit and push your own changes
 - **Review and update MEMORY.md** (see below)
 
-### 🔄 Memory Maintenance (During Heartbeats)
+### 🔄 Memory Maintenance（参考Claude Code AutoDream整合策略）
 
-Periodically (every few days), use a heartbeat to:
+借鉴Claude Code的4阶段记忆整合模式：
 
+**Phase 1 — Orient（定位）**：扫描memory目录，读取MEMORY.md索引，了解已有内容
+**Phase 2 — Gather（收集）**：读取近期daily notes，识别新的信号
+**Phase 3 — Consolidate（整合）**：合并新内容到MEMORY.md已有section，而非创建重复条目。矛盾事实以较新的为准
+**Phase 4 — Prune（修剪）**：移除过时信息，精简超长section，更新Current State
+
+**执行时机（ heartbeat 中）：**
 1. Read through recent `memory/YYYY-MM-DD.md` files
 2. Identify significant events, lessons, or insights worth keeping long-term
 3. Update `MEMORY.md` with distilled learnings
 4. Remove outdated info from MEMORY.md that's no longer relevant
 
-Think of it like a human reviewing their journal and updating their mental model. Daily files are raw notes; MEMORY.md is curated wisdom.
+**额外要求：**
+- 每次整合后同步更新LanceDB（如果重要信息需要被快速recall检索）
+- 检查MEMORY.md总行数，超过500行时必须精简
+- Current State section每次对话结束前必须更新为最新的工作状态
 
 The goal: Be helpful without being annoying. Check in a few times a day, do useful background work, but respect quiet time.
+
+## 📦 Skill使用纪律
+
+当以下场景出现时，**必须**读取对应SKILL.md并遵循：
+
+| 场景 | 技能 | 触发词 |
+|------|------|--------|
+| 进程卡顿/排查 | /stuck | "卡了"、"慢"、"进程"、"排查" |
+| 代码审查 | /simplify | "审查"、"review"、"检查代码" |
+| 重要实现验证 | /verify | 实现完成后自动触发 |
+| 批量并行任务 | /batch | "批量"、"并行"、"同时处理" |
+| 文档维护 | /magic-doc | 带MAGIC DOC头的文档被修改时 |
+| 记忆提取 | /extract | 重要对话结束后 |
+| 自动发布 | /auto-publisher | "发布"、"发文"、"流水线" |
 
 ## Make It Yours
 
