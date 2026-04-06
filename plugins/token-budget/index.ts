@@ -1,27 +1,13 @@
 /**
  * Token Budget Tracker Plugin
  * Inspired by Claude Code's Token Budget + Diminishing Returns Detection
- * 
- * Hooks: before_tool_call, after_tool_call, session_start, session_end
- * 
- * Features:
- * - Track cumulative token usage per session
- * - Detect diminishing returns (consecutive low-output turns)
- * - Log budget warnings
- * - Provide budget status via agent tool
  */
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
-import type { PluginHookBeforeToolCallEvent, PluginHookBeforeToolCallResult } from "openclaw/plugin-sdk/types";
+import type { PluginHookBeforeToolCallEvent } from "openclaw/plugin-sdk/types";
 import type { PluginHookAfterToolCallEvent } from "openclaw/plugin-sdk/types";
 import type { PluginHookSessionStartEvent } from "openclaw/plugin-sdk/types";
 import type { PluginHookSessionEndEvent } from "openclaw/plugin-sdk/types";
-import { createPluginRuntimeStore } from "openclaw/plugin-sdk/runtime-store";
-import type { PluginRuntime } from "openclaw/plugin-sdk/runtime-store";
-
-const store = createPluginRuntimeStore<PluginRuntime>("token-budget not initialized");
-
-// ─── Session State ────────────────────────────────────────────
 
 interface SessionBudget {
   sessionKey: string;
@@ -29,47 +15,29 @@ interface SessionBudget {
   totalTurns: number;
   totalToolCalls: number;
   estimatedTokensUsed: number;
-  recentOutputSizes: number[]; // last N turn output sizes
+  recentOutputSizes: number[];
   diminishingCount: number;
   warnings: string[];
 }
 
 const sessions = new Map<string, SessionBudget>();
 
-// Rough token estimation: ~4 chars per token (works for mixed CJK/Latin)
-function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 3.5);
-}
+function estimateTokens(text: string): number { return Math.ceil(text.length / 3.5); }
 
-function getSession(sessionKey: string): SessionBudget {
-  let session = sessions.get(sessionKey);
-  if (!session) {
-    session = {
-      sessionKey,
-      startTime: Date.now(),
-      totalTurns: 0,
-      totalToolCalls: 0,
-      estimatedTokensUsed: 0,
-      recentOutputSizes: [],
-      diminishingCount: 0,
-      warnings: [],
-    };
-    sessions.set(sessionKey, session);
+function getSession(sk: string): SessionBudget {
+  let s = sessions.get(sk);
+  if (!s) {
+    s = { sessionKey: sk, startTime: Date.now(), totalTurns: 0, totalToolCalls: 0,
+      estimatedTokensUsed: 0, recentOutputSizes: [], diminishingCount: 0, warnings: [] };
+    sessions.set(sk, s);
   }
-  return session;
+  return s;
 }
 
-function checkDiminishingReturns(
-  session: SessionBudget,
-  threshold: number,
-  window: number,
-): boolean {
-  const recent = session.recentOutputSizes.slice(-window);
-  if (recent.length < window) return false;
-  return recent.every(size => size < threshold);
+function isDiminishing(s: SessionBudget, thresh: number, win: number): boolean {
+  const r = s.recentOutputSizes.slice(-win);
+  return r.length >= win && r.every(x => x < thresh);
 }
-
-// ─── Plugin Entry ──────────────────────────────────────────────
 
 export default definePluginEntry({
   id: "token-budget",
@@ -78,144 +46,70 @@ export default definePluginEntry({
 
   register(api) {
     const config = api.pluginConfig as {
-      enabled?: boolean;
-      maxTokensPerSession?: number;
-      diminishingThreshold?: number;
-      diminishingWindow?: number;
+      enabled?: boolean; maxTokensPerSession?: number;
+      diminishingThreshold?: number; diminishingWindow?: number;
     };
 
-    store.setRuntime(api.runtime);
-
-    if (config.enabled === false) {
-      api.logger.info("Token Budget Tracker disabled by config");
-      return;
-    }
+    if (config.enabled === false) return;
 
     const maxTokens = config.maxTokensPerSession ?? 200000;
-    const dimThreshold = config.diminishingThreshold ?? 200;
-    const dimWindow = config.diminishingWindow ?? 3;
+    const dimTh = config.diminishingThreshold ?? 200;
+    const dimWin = config.diminishingWindow ?? 3;
 
-    // ─── session_start ─────────────────────────────────────
-    api.registerHook("session_start", async (event: PluginHookSessionStartEvent) => {
-      const sessionKey = event.sessionKey || "unknown";
-      getSession(sessionKey); // initialize
-      api.logger.info(`[TOKEN-BUDGET] Session started: ${sessionKey}`);
+    api.registerHook("session_start", async (e: PluginHookSessionStartEvent) => {
+      getSession(e.sessionKey || "unknown");
     });
 
-    // ─── session_end ───────────────────────────────────────
-    api.registerHook("session_end", async (event: PluginHookSessionEndEvent) => {
-      const sessionKey = event.sessionKey || "unknown";
-      const session = sessions.get(sessionKey);
-      if (session) {
-        const duration = ((Date.now() - session.startTime) / 1000).toFixed(0);
-        api.logger.info(
-          `[TOKEN-BUDGET] Session ended: ${sessionKey} | ` +
-          `turns: ${session.totalTurns} | tools: ${session.totalToolCalls} | ` +
-          `est tokens: ~${session.estimatedTokensUsed} | duration: ${duration}s`
-        );
-        sessions.delete(sessionKey);
+    api.registerHook("session_end", async (e: PluginHookSessionEndEvent) => {
+      const s = sessions.get(e.sessionKey || "");
+      if (s) {
+        const dur = ((Date.now() - s.startTime) / 1000).toFixed(0);
+        api.logger.info(`[TOKEN-BUDGET] ${e.sessionKey} | turns:${s.totalTurns} tools:${s.totalToolCalls} tokens:~${s.estimatedTokensUsed} dur:${dur}s`);
+        sessions.delete(e.sessionKey || "");
       }
     });
 
-    // ─── before_tool_call ─────────────────────────────────
-    api.registerHook(
-      "before_tool_call",
-      async (event: PluginHookBeforeToolCallEvent): Promise<PluginHookBeforeToolCallResult | undefined> => {
-        const sessionKey = event.sessionKey || "unknown";
-        const session = getSession(sessionKey);
-        session.totalToolCalls++;
-
-        // Estimate input tokens
-        const inputStr = JSON.stringify(event.input);
-        const inputTokens = estimateTokens(inputStr);
-        session.estimatedTokensUsed += inputTokens;
-
-        // Check if approaching budget limit
-        const usagePercent = (session.estimatedTokensUsed / maxTokens) * 100;
-        if (usagePercent > 90) {
-          const warning = `Token budget ${usagePercent.toFixed(0)}% used (~${session.estimatedTokensUsed}/${maxTokens})`;
-          if (!session.warnings.includes(warning)) {
-            session.warnings.push(warning);
-            api.logger.warn(`[TOKEN-BUDGET] ⚠️ ${warning}`);
-          }
-        }
-
-        // Check diminishing returns
-        if (checkDiminishingReturns(session, dimThreshold, dimWindow)) {
-          session.diminishingCount++;
-          if (session.diminishingCount === 1) {
-            api.logger.warn(
-              `[TOKEN-BUDGET] 📉 Diminishing returns detected in ${sessionKey} ` +
-              `(last ${dimWindow} turns produced <${dimThreshold} chars each)`
-            );
-          }
-        } else {
-          session.diminishingCount = 0;
-        }
-
-        return undefined; // don't block
-      },
-      { priority: 0 }, // low priority — purely observational
-    );
-
-    // ─── after_tool_call ──────────────────────────────────
-    api.registerHook("after_tool_call", async (event: PluginHookAfterToolCallEvent) => {
-      const sessionKey = event.sessionKey || "unknown";
-      const session = getSession(sessionKey);
-      session.totalTurns++;
-
-      // Estimate output tokens
-      const outputStr = typeof event.result === "string"
-        ? event.result
-        : JSON.stringify(event.result);
-      const outputTokens = estimateTokens(outputStr);
-      session.estimatedTokensUsed += outputTokens;
-
-      // Track output size for diminishing returns detection
-      session.recentOutputSizes.push(outputStr.length);
-      if (session.recentOutputSizes.length > 10) {
-        session.recentOutputSizes.shift();
+    api.registerHook("before_tool_call", async (e: PluginHookBeforeToolCallEvent) => {
+      const s = getSession(e.sessionKey || "unknown");
+      s.totalToolCalls++;
+      s.estimatedTokensUsed += estimateTokens(JSON.stringify(e.input));
+      const pct = (s.estimatedTokensUsed / maxTokens) * 100;
+      if (pct > 90) {
+        const w = `Budget ${pct.toFixed(0)}% (~${s.estimatedTokensUsed}/${maxTokens})`;
+        if (!s.warnings.includes(w)) { s.warnings.push(w); api.logger.warn(`[TOKEN-BUDGET] ⚠️ ${w}`); }
       }
+      if (isDiminishing(s, dimTh, dimWin)) {
+        s.diminishingCount++;
+        if (s.diminishingCount === 1) api.logger.warn(`[TOKEN-BUDGET] 📉 Diminishing returns in ${e.sessionKey}`);
+      } else s.diminishingCount = 0;
+    }, { priority: 0 });
+
+    api.registerHook("after_tool_call", async (e: PluginHookAfterToolCallEvent) => {
+      const s = getSession(e.sessionKey || "unknown");
+      s.totalTurns++;
+      const out = typeof e.result === "string" ? e.result : JSON.stringify(e.result);
+      s.estimatedTokensUsed += estimateTokens(out);
+      s.recentOutputSizes.push(out.length);
+      if (s.recentOutputSizes.length > 10) s.recentOutputSizes.shift();
     });
 
-    // ─── Agent tool: budget_status ────────────────────────
     api.registerTool({
       name: "budget_status",
-      description: "Get current session token budget status and usage statistics",
-      parameters: (() => {
-        const { Type } = require("@sinclair/typebox") as typeof import("@sinclair/typebox");
-        return Type.Object({});
-      })(),
+      description: "Get current session token budget status",
+      parameters: { type: "object", properties: {} },
       async execute(_id, _params, ctx) {
-        const sessionKey = ctx?.sessionKey || "unknown";
-        const session = getSession(sessionKey);
-        const usagePercent = ((session.estimatedTokensUsed / maxTokens) * 100).toFixed(1);
-        const duration = ((Date.now() - session.startTime) / 1000).toFixed(0);
-        const isDiminishing = checkDiminishingReturns(session, dimThreshold, dimWindow);
-
-        const report = [
-          `📊 Token Budget Report`,
-          `─────────────────`,
-          `Session: ${sessionKey}`,
-          `Duration: ${duration}s`,
-          `Turns: ${session.totalTurns}`,
-          `Tool calls: ${session.totalToolCalls}`,
-          `Est. tokens: ~${session.estimatedTokensUsed} / ${maxTokens} (${usagePercent}%)`,
-          `Diminishing returns: ${isDiminishing ? "⚠️ YES" : "✅ No"}`,
-          `Warnings: ${session.warnings.length || "None"}`,
-        ];
-
-        if (session.warnings.length > 0) {
-          report.push("", "Recent warnings:");
-          session.warnings.slice(-3).forEach(w => report.push(`  - ${w}`));
-        }
-
-        return {
-          content: [{ type: "text", text: report.join("\n") }],
-        };
+        const sk = (ctx as any)?.sessionKey || "unknown";
+        const s = getSession(sk);
+        const pct = ((s.estimatedTokensUsed / maxTokens) * 100).toFixed(1);
+        const dur = ((Date.now() - s.startTime) / 1000).toFixed(0);
+        return { content: [{ type: "text", text: [
+          `📊 Token Budget: ~${s.estimatedTokensUsed}/${maxTokens} (${pct}%)`,
+          `Turns: ${s.totalTurns} | Tools: ${s.totalToolCalls} | Duration: ${dur}s`,
+          `Diminishing: ${isDiminishing(s, dimTh, dimWin) ? "⚠️ YES" : "✅ No"}`,
+        ].join("\n") }] };
       },
     });
 
-    api.logger.info("Token Budget Tracker plugin registered (Claude Code Token Budget inspired)");
+    api.logger.info("Token Budget Tracker registered");
   },
 });
