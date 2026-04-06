@@ -30,23 +30,24 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 
 MEMORY.md采用结构化模板，包含以下固定section：
 
-| Section | 用途 |
-|---------|------|
-| 铁律（Iron Rules）| 永远不可违反的核心规则 |
-| 当前状态（Current State）| 正在做什么，下一步是什么 |
-| 常用工作流（Workflow）| 常用命令、脚本、操作顺序 |
-| 错误与修复（Errors & Fixes）| 遇到的错误和修复方法，避免重复踩坑 |
-| 关键项目（Key Projects）| 重要项目、它们的路径和状态 |
-| 关键结果（Key Results）| 用户要求的特定输出，精确记录 |
-| 通用知识（General Knowledge）| 学到的通用技巧、最佳实践 |
+| Section | 用途 | Token预算 |
+|---------|------|-----------|
+| 铁律（Iron Rules）| 永远不可违反的核心规则 | 无限制 |
+| 当前状态（Current State）| 正在做什么，下一步是什么 | ≤500 |
+| 常用工作流（Workflow）| 常用命令、脚本、操作顺序 | ≤1000 |
+| 错误与修复（Errors & Fixes）| 遇到的错误和修复方法 | ≤1000 |
+| 关键项目（Key Projects）| 重要项目、它们的路径和状态 | ≤500 |
+| 关键结果（Key Results）| 用户要求的特定输出 | ≤500 |
+| 通用知识（General Knowledge）| 学到的通用技巧 | ≤1000 |
 
 **规则：**
 - **ONLY load in main session**（直接和老板的对话）
 - **DO NOT load in shared contexts**（Discord、群聊、其他人的session）
 - This is for **security** — contains personal context that shouldn't leak to strangers
 - You can **read, edit, and update** MEMORY.md freely in main sessions
-- **每section保持在合理长度**，超限时精简旧条目，保留最重要的
+- **每section严格遵守token预算**，超限时优先精简旧条目
 - **Current State每次对话结束必须更新**——这是跨会话连续性的关键
+- **NEVER修改、删除或添加section标题**——保持结构稳定性
 
 ### 📝 Write It Down - No "Mental Notes"!
 
@@ -87,12 +88,36 @@ MEMORY.md采用结构化模板，包含以下固定section：
 
 **核心原则**：连续3次相同类型的失败 = 停下来思考，不要盲目重试。
 
+**Denial Tracking（源自Claude Code permissions.ts）**: 如果某个工具连续被拒绝N次，自动切换策略（改为询问用户或换方式实现），而非继续尝试同样的方法。
+
+**Withholding模式（源自Claude Code query.ts）**: 遇到可恢复错误时（如token超限），先内部尝试恢复（最多3次），不立即向用户报告错误。只有恢复失败后才暴露。
+
 ## 📊 边际递减检测（源自Claude Code Token Budget）
 
 在长时间运行的子agent任务中，监测输出质量：
 - 如果连续3轮新增有效信息<200字符，说明已进入边际递减状态
 - 此时应停止当前任务并汇报结果，而非继续消耗token
 - 适用于：代码搜索、日志分析、文件扫描等可能无底洞的任务
+
+## 🔒 子Agent安全纪律（源自Claude Code AgentTool）
+
+1. **Worktree隔离**：每个子agent在独立上下文中运行，避免污染主会话
+2. **Memory Snapshot**：子agent继承主agent的记忆快照（workspace文件自动继承）
+3. **Turn Budget**：子agent的prompt中明确最优N-turn策略
+4. **两级Abort**：整个task有一个abort controller，每turn也有独立abort
+5. **进度追踪**：长时间运行的子agent应定期报告进度
+6. **输入范围限制**：明确告诉子agent"你MUST只使用最近N条消息的内容"，防止浪费时间
+
+## 🗂️ 压缩策略（源自Claude Code四层管道）
+
+OpenClaw的LCM（Lossless Context Management）可以借鉴Claude Code的分层压缩：
+
+1. **Snip（裁剪）**: 删除历史消息中不再需要的冗余内容
+2. **MicroCompact（微压缩）**: 压缩大型工具结果（文件内容、搜索结果），标记为[已清除]
+3. **ContextCollapse（上下文折叠）**: 用projection而非mutation，collapsed view是read-time的
+4. **AutoCompact（自动压缩）**: 完整摘要压缩，预留13K buffer
+
+当向子agent传递历史上下文时，优先使用精简版本。
 
 ## Red Lines
 

@@ -1,6 +1,6 @@
-# /magic-doc — 自动维护文档技能
+# /magic-doc — 自动维护文档技能（v2，源自Claude Code MagicDocs）
 
-自动发现和更新带有特殊标记头的markdown文档。类似Claude Code的Magic Docs系统。
+自动发现和更新带有特殊标记头的markdown文档。
 
 ## 使用场景
 - 项目中有需要持续更新的设计文档、架构说明、配置指南
@@ -8,7 +8,7 @@
 
 ## 标记头格式
 
-文档开头包含以下格式会被自动识别为Magic Doc：
+文档开头包含以下格式会被识别为Magic Doc：
 
 ```markdown
 # MAGIC DOC: 文档标题
@@ -16,42 +16,28 @@ _描述：这个文档的用途_
 _更新频率：每次相关代码变更时_
 ```
 
-## 发现机制
+## 文档哲学（源自Claude Code）
 
-1. 在heartbeat或文件读取时扫描magic-doc标记
-2. 维护一个索引：`memory/magic-docs-index.json`
-3. 相关文件变更时自动触发更新
+**BE TERSE. High signal only.**
+- 只记录WHY/HOW/WHERE，不记录详细代码步骤
+- 每行entry保持≤150字符
+- 这不是changelog，是当前状态的文档
+- "Keep the document CURRENT" — 移除过时信息
+
+## 模板变量安全（源自Claude Code）
+
+使用`{{variable}}`语法，用单次正则替换：
+```javascript
+text.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key])
+```
+⚠️ 禁止链式replace——会导致双重替换漏洞（用户内容包含`{{varName}}`时被错误替换）。
 
 ## 更新规则
 
 1. **追加为主**：新信息追加到对应section，不删除旧内容
-2. **冲突处理**：新旧信息矛盾时，新信息优先，但标记旧信息为"已废弃"
-3. **长度控制**：单个Magic Doc不超过500行，超限时精简旧条目
+2. **冲突处理**：新旧信息矛盾时，新信息优先，标记旧信息为"已废弃"
+3. **长度控制**：单个Magic Doc不超过500行
+4. **索引维护**：每个条目一行：`- [Title](file.md) — one-line hook`
 
-## 示例Magic Docs
-
-### 架构决策记录
-```markdown
-# MAGIC DOC: 架构决策记录
-_描述：记录项目中的重大架构决策及原因_
-_更新频率：每次架构变更时_
-
-## 2026-04-07: 记忆系统重构
-- 决策：MEMORY.md从自由格式改为结构化模板
-- 原因：自由格式导致信息散乱，难以快速定位
-- 参考：Claude Code Session Memory模板
-```
-
-### API设计决策
-```markdown
-# MAGIC DOC: API设计决策
-_描述：记录API接口的设计决策和变更_
-_更新频率：每次API变更时_
-```
-
-### 部署运维手册
-```markdown
-# MAGIC DOC: 部署运维手册
-_描述：服务器部署和日常运维的操作指南_
-_更新频率：每次部署变更时_
-```
+## 自定义Prompt
+用户可在`~/.openclaw/workspace/magic-docs/prompt.md`覆盖默认模板（类似Claude Code的`~/.claude/magic-docs/prompt.md`）
