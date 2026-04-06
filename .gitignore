@@ -47,6 +47,9 @@ skills/shift-reminder/data/
 # scripts 里的临时文件
 scripts/*.tmp
 
+# 浏览器auth缓存（从Windows服务器导出，不备份）
+skills/auto-publisher/auth/
+
 # Token/凭证
 .youtube_token.json
 .openclaw/workspace-state.json
@@ -56,3 +59,7 @@ __pycache__/
 lossless-claw-enhanced/
 projects/
 *.png
+
+# 媒体封面
+assets/
+skills/ai-music-channel/covers/
