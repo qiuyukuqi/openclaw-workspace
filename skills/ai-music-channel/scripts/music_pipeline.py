@@ -30,7 +30,7 @@ def log(msg):
 def notify(msg):
     try:
         subprocess.run(["openclaw", "message", "send", "--channel", "feishu",
-                        "-t", f"user:{USER_ID}", "-m", msg],
+                        "--account", "main", "-t", f"user:{USER_ID}", "-m", msg],
                        capture_output=True, timeout=30)
     except:
         pass

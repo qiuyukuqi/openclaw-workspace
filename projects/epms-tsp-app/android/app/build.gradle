@@ -1,0 +1,12 @@
+plugins { id "com.android.application"; id "kotlin-android"; id "dev.flutter.flutter-gradle-plugin" }
+android {
+    namespace "com.example.epms_tsp_app"
+    compileSdk 34
+    ndkVersion flutter.ndkVersion
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+    kotlinOptions { jvmTarget = "1.8" }
+    defaultConfig { applicationId "com.example.epms_tsp_app"; minSdk 21; targetSdk 34; versionCode 1; versionName "1.0.0" }
+    signingConfigs { debug { storeFile file('debug.keystore'); storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android' } }
+    buildTypes { debug { signingConfig signingConfigs.debug }; release { signingConfig signingConfigs.debug } }
+}
+flutter { source "../.." }

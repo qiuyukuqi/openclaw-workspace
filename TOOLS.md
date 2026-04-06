@@ -107,7 +107,7 @@ python skills/tencent-ocr/scripts/ocr.py <图片路径或URL> [general|fast|hand
 **当前定时任务：**
 | 任务 | 时间 | 脚本 |
 |------|------|------|
-| 邮件日报 | 每天 7:00 | daily_report.py |
+| 邮件日报 | 每天 7:00 | daily_report.sh |
 | 新闻简报 | 每天 7:10 | news_rss.py |
 | 倒班提醒 | 每分钟 | shift_reminder.js |
 

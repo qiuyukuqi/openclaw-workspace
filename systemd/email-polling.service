@@ -1,0 +1,15 @@
+[Unit]
+Description=Email Polling Monitor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /root/.openclaw/workspace/skills/email-monitor/scripts/check_mail.py
+WorkingDirectory=/root/.openclaw/workspace
+Restart=always
+RestartSec=30
+StandardOutput=append:/root/.openclaw/workspace/skills/email-monitor/data/polling.log
+StandardError=append:/root/.openclaw/workspace/skills/email-monitor/data/polling.log
+
+[Install]
+WantedBy=multi-user.target

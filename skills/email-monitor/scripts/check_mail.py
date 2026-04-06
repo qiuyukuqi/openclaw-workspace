@@ -660,14 +660,15 @@ def add_to_knowledge_base(att_path, att_filename):
         
         if result.returncode == 0:
             print(f"✅ 已存入知识库: {att_filename}", file=sys.stderr)
-            # 通知用户
-            notify_feishu(f"📚 已将 {att_filename} 存入知识库")
+            notify_feishu(f"📚 已将 {att_filename} 存入知识库 ✅")
             return True
         else:
             print(f"存入知识库失败: {result.stderr}", file=sys.stderr)
+            notify_feishu(f"⚠️ 知识库入库失败: {att_filename}")
             return False
     except Exception as e:
         print(f"存入知识库异常: {e}", file=sys.stderr)
+        notify_feishu(f"⚠️ 知识库入库异常: {att_filename}")
         return False
 
 
@@ -681,6 +682,9 @@ def send_attachment(att):
         return False
 
     try:
+        # 先发送文件名提示
+        notify_feishu(f"📎 附件：{att_filename}\n📚 正在存入知识库...")
+
         # 自动存入知识库（异步执行，不阻塞邮件处理）
         kb_thread = threading.Thread(
             target=add_to_knowledge_base,
@@ -688,9 +692,6 @@ def send_attachment(att):
             daemon=True
         )
         kb_thread.start()
-        
-        # 先发送文件名提示
-        notify_feishu(f"📎 附件：{att_filename}\n📚 自动存入知识库中...")
 
         # 获取飞书 tenant_access_token
         feishu_config = get_feishu_config()

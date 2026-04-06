@@ -46,6 +46,7 @@ ENV = load_env()
 APPID = ENV.get("WECHAT_APP_ID", "")
 APPSECRET = ENV.get("WECHAT_APP_SECRET", "")
 DASHSCOPE_KEY = ENV.get("DASHSCOPE_API_KEY", "")
+DEEPSEEK_KEY = "sk-162c19004d444d73a49c735c4de9d82f"
 TAVILY_KEY = ENV.get("TAVILY_API_KEY", "")
 USER_ID = "ou_c5c98e2002a34a9b10f15fd0b6463d06"
 
@@ -57,18 +58,19 @@ def log(msg):
     print(f"[{ts()}] {msg}", flush=True)
 
 def notify(msg):
+    """飞书通知：通过openclaw message send发送"""
     try:
         subprocess.run(["openclaw", "message", "send", "--channel", "feishu",
-                        "-t", f"user:{USER_ID}", "-m", msg],
+                        "--account", "main", "-t", f"user:{USER_ID}", "-m", msg],
                        capture_output=True, timeout=30)
-    except:
-        pass
+    except Exception as e:
+        log(f"⚠️ notify失败: {e}")
 
 def call_ai(prompt, temp=0.85, tokens=4000):
     r = requests.post(
-        "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-        headers={"Authorization": f"Bearer {DASHSCOPE_KEY}", "Content-Type": "application/json"},
-        json={"model": "qwen-plus", "messages": [{"role": "user", "content": prompt}],
+        "https://api.deepseek.com/v1/chat/completions",
+        headers={"Authorization": f"Bearer {DEEPSEEK_KEY}", "Content-Type": "application/json"},
+        json={"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}],
               "max_tokens": tokens, "temperature": temp},
         timeout=120
     )
@@ -316,6 +318,40 @@ def step_writer(state):
     return output
 
 # ========== Step 4: Director 配图规划 ==========
+def step_polish(state):
+    """AI润色：优化标题、检查错别字、优化过渡"""
+    title = state.get("article_title", state.get("title", ""))
+    content = state.get("article_html", state.get("content", ""))
+    if not content:
+        log(f"  ⚠️ 内容为空，跳过润色")
+        return state
+
+    log(f"  AI润色中...")
+    prompt = f"""请对以下微信公众号文章进行润色优化：
+1. 优化标题使其更吸引点击（不超过11个中文字）
+2. 检查并修正错别字、语法错误
+3. 优化段落过渡，让阅读更流畅
+4. 禁止在文末添加AI原创声明、AI辅助创作声明、免责声明，不要出现"AI""人工智能""原创声明"等字样
+
+当前标题: {title}
+
+文章内容:
+{content}
+
+请直接输出完整的HTML内容（包含<title>标签），不要加任何解释。"""
+
+    try:
+        result = call_ai(prompt, temp=0.6)
+        m = re.search(r'<title>(.*?)</title>', result, re.I | re.S)
+        new_title = m.group(1).strip() if m else title
+        new_content = re.sub(r'<title>.*?</title>', '', result, flags=re.I | re.S).strip()
+        log(f"  润色后标题: {new_title}")
+        notify(f"✨ 润色完成\n📝 标题: {new_title}（原: {title}）")
+        return {"article_title": new_title, "article_html": new_content}
+    except Exception as e:
+        log(f"  ⚠️ 润色失败，使用原文: {e}")
+        return state  # 返回原文而不是None，让流水线继续
+
 def step_director(state):
     log("🎨 Step 4/7: Director（配图规划）")
     title = state.get("article_title", "")
@@ -439,6 +475,42 @@ def step_format(state):
     return output
 
 # ========== Step 7: Publisher 发布 ==========
+def step_validate(state):
+    """校验：字数、配图、标题长度"""
+    title = state.get("title", "")
+    content = state.get("content", "")
+    images = state.get("images", [])
+
+    log(f"  校验中...")
+    warnings = []
+
+    # 字数
+    word_count = len(re.sub(r'<[^>]+>', '', content).replace(' ', '').replace('\n', ''))
+    if word_count < 3000:
+        warnings.append(f"字数偏少({word_count})")
+    log(f"  字数: {word_count} {'✓' if word_count >= 3000 else '⚠️'}")
+
+    # 配图
+    if not images:
+        warnings.append("无配图")
+    log(f"  配图: {len(images)}张 {'✓' if images else '⚠️'}")
+
+    # 标题长度
+    gbk_len = len(title.encode('gbk', errors='replace'))
+    if gbk_len > 22:
+        warnings.append(f"标题GBK({gbk_len}字节)超限")
+        state["title"] = state["title"][:11]
+        log(f"  标题已截断: {state['title']}")
+    else:
+        log(f"  标题: {title} ({gbk_len}字节) ✓")
+
+    if warnings:
+        log(f"  ⚠️ {', '.join(warnings)}，但不阻断发布")
+    else:
+        log(f"  校验通过 ✓")
+
+    return state
+
 def step_publish(state):
     log("📤 Step 7/7: Publisher（发布）")
     
@@ -552,9 +624,11 @@ def main():
         ("scout", step_scout, []),
         ("research", step_research, ["state"]),
         ("writer", step_writer, ["state"]),
+        ("polish", step_polish, ["state"]),
         ("director", step_director, ["state"]),
         ("image", step_image, ["state"]),
         ("format", step_format, ["state"]),
+        ("validate", step_validate, ["state"]),
         ("publish", step_publish, ["state"]),
     ]
     

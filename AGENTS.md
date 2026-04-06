@@ -50,6 +50,18 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 以下目录中的文件归档后禁止删除或清理：
 - `/root/files/` — 飞书云空间下载归档（法律法规、管理体系文件等）
 
+## 🔍 记忆检索纪律（Mandatory）
+
+在以下场景中，**必须先 `memory_recall` 再回复**，不许凭"感觉"回答：
+
+1. 用户问到偏好、习惯、历史操作（"我之前用的什么..."）
+2. 涉及之前讨论过的技术方案、决策、结论
+3. 用户问"你还记得..."、"上次..."、"之前说的..."
+4. 需要重复执行某项操作时（先查上次怎么做的）
+5. 涉及服务器配置、部署方式、已安装的服务
+
+宁可多查一次，不要瞎猜。
+
 ## Red Lines
 
 - Don't exfiltrate private data. Ever.

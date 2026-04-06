@@ -53,3 +53,6 @@ scripts/*.tmp
 .clawhub/
 __pycache__/
 *.pyc
+lossless-claw-enhanced/
+projects/
+*.png

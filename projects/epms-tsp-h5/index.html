@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#1e1e2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>EPMS-TSP监控</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.bootcdn.net/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<style>
+:root{--bg:#1e1e2e;--card:#313244;--border:#45475a;--normal:#a6e3a1;--exceed:#89b4fa;--interrupt:#fab387;--offline:#f38ba8;--text:#cdd6f4;--sub:#a6adc8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;overflow-x:hidden}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-2{gap:8px}.gap-3{gap:12px}
+.grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}.flex-1{flex:1}.w-full{width:100%}
+.text-xs{font-size:12px}.text-sm{font-size:14px}.text-lg{font-size:18px}.text-3xl{font-size:30px}
+.font-medium{font-weight:500}.font-bold{font-weight:700}.text-center{text-align:center}.text-right{text-align:right}
+.overflow-x-auto{overflow-x:auto}
+.badge{padding:2px 8px;border-radius:9999px;font-size:12px;display:inline-block}
+.badge-exceed{background:rgba(137,180,250,.15);color:var(--exceed)}
+.badge-interrupt{background:rgba(250,179,135,.15);color:var(--interrupt)}
+.badge-offline{background:rgba(243,139,168,.15);color:var(--offline)}
+.badge-normal{background:rgba(166,227,161,.15);color:var(--normal)}
+.card{background:var(--card);border-radius:12px;padding:12px}
+.alert-card{background:var(--card);border-radius:12px;padding:12px;margin-bottom:8px}
+.btn{padding:10px;border-radius:12px;font-weight:500;text-align:center}
+.btn-primary{background:rgba(137,180,250,.15);color:var(--exceed)}
+.switch{width:48px;height:28px;border-radius:14px;position:relative;transition:background .2s;cursor:pointer;border:none}
+.switch-on{background:var(--normal)}.switch-off{background:var(--border)}
+.switch-dot{width:20px;height:20px;background:#fff;border-radius:50%;position:absolute;top:4px;transition:left .2s}
+.switch-on .switch-dot{left:24px}.switch-off .switch-dot{left:4px}
+button{cursor:pointer;border:none;background:none;color:var(--text);font-size:inherit}
+select,input[type="text"],input[type="number"],input[type="datetime-local"]{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;outline:none;-webkit-appearance:none;appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a6adc8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+select option{background:var(--card);color:var(--text)}
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.7)}
+table{width:100%;border-collapse:collapse}th,td{padding:6px 12px;text-align:left}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse-dot{animation:pulse-dot 1.5s infinite}
+.mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}.mt-1{margin-top:4px}
+.text-sub{color:var(--sub)}.text-normal{color:var(--normal)}.text-exceed{color:var(--exceed)}.text-interrupt{color:var(--interrupt)}.text-offline{color:var(--offline)}
+</style>
+</head>
+<body>
+<div id="app" style="min-height:100vh;padding-bottom:80px">
+  <!-- 监控Tab -->
+  <div v-show="tab===0" style="padding:16px">
+    <div class="flex items-center justify-between mb-4 card">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot" style="width:12px;height:12px;border-radius:50%;display:inline-block" :style="{background:statusColor}"></span>
+        <span class="text-sm font-medium">{{statusText}}</span>
+      </div>
+      <span class="text-xs" :style="{color:connected?'var(--normal)':'var(--offline)'}">{{connected?'已连接':'已离线'}}</span>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mb-4">
+      <div v-for="d in devices" :key="d.code" class="card" style="min-height:100px">
+        <div class="text-xs text-sub mb-1">{{d.code}} · {{d.name}}</div>
+        <div class="text-3xl font-bold mb-1" :style="{color:getValueColor(d.code)}">{{getLatestValue(d.code)}}</div>
+        <div class="text-xs text-sub">mg/Nm³</div>
+        <div v-if="getDeviceStatus(d.code)!=='normal'" class="mt-1">
+          <span class="badge" :class="'badge-'+getDeviceStatus(d.code)">{{statusLabel(d.code)}}</span>
+        </div>
+      </div>
+    </div>
+    <div class="card mb-4">
+      <div class="flex gap-2 mb-3">
+        <button v-for="d in devices" :key="d.code" @click="tableDevice=d.code" class="flex-1 text-sm" style="padding:6px 0;border-radius:8px" :style="tableDevice===d.code?'background:rgba(137,180,250,.15);color:var(--exceed)':'color:var(--sub)'">{{d.code}}</button>
+      </div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-sub" style="border-bottom:1px solid var(--border)"><th>时间</th><th style="text-align:right">TSP</th><th style="text-align:right">状态</th></tr></thead>
+        <tbody>
+          <tr v-for="r in getTableData(tableDevice)" :key="r.Date" style="border-bottom:1px solid rgba(69,71,90,.5)">
+            <td class="text-sub">{{fmtTime(r.Date)}}</td>
+            <td style="text-align:right;font-weight:500">{{r.TSP==null?'--':r.TSP}}</td>
+            <td style="text-align:right"><span class="badge" :class="r.TSP==null?'badge-interrupt':r.TSP>settings.threshold?'badge-exceed':'badge-normal'">{{r.TSP==null?'中断':r.TSP>settings.threshold?'超标':'正常'}}</span></td>
+          </tr>
+          <tr v-if="!getTableData(tableDevice).length"><td colspan="3" style="text-align:center;padding:16px;color:var(--sub)">暂无数据</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="flex gap-2 mb-3">
+        <button @click="switchRange('60m')" class="flex-1 text-sm" style="padding:6px 0;border-radius:8px" :style="chartRange==='60m'?'background:rgba(137,180,250,.15);color:var(--exceed)':'color:var(--sub)'">近60分钟</button>
+        <button @click="switchRange('24h')" class="flex-1 text-sm" style="padding:6px 0;border-radius:8px" :style="chartRange==='24h'?'background:rgba(137,180,250,.15);color:var(--exceed)':'color:var(--sub)'">近24小时</button>
+      </div>
+      <div id="chart" style="height:220px;background:#181825;border-radius:8px"></div>
+    </div>
+  </div>
+
+  <!-- 告警Tab -->
+  <div v-show="tab===1" style="padding:16px">
+    <div class="flex gap-2 mb-4">
+      <select v-model="alertFilter.device" class="flex-1"><option value="all">全部设备</option><option v-for="d in devices" :key="d.code" :value="d.code">{{d.name}}</option></select>
+      <select v-model="alertFilter.type" class="flex-1"><option value="all">全部类型</option><option value="exceed">超标</option><option value="interrupt">中断</option><option value="offline">离线</option></select>
+    </div>
+    <select v-model="alertFilter.days" class="mb-4"><option value="7">近7天</option><option value="30">近30天</option><option value="90">近90天</option><option value="0">全部</option></select>
+    <div>
+      <div v-for="a in filteredAlerts" :key="a.id" class="alert-card">
+        <div class="flex justify-between items-center mb-1"><span class="text-sm font-medium">{{a.device}}</span><span class="badge" :class="'badge-'+a.type">{{alertTypeLabel(a.type)}}</span></div>
+        <div class="text-xs text-sub">{{fmtTime(a.time)}}</div>
+        <div class="text-sm mt-1">{{a.detail}}</div>
+      </div>
+      <div v-if="!filteredAlerts.length" style="text-align:center;color:var(--sub);padding:32px 0">暂无告警记录</div>
+    </div>
+  </div>
+
+  <!-- 报表Tab -->
+  <div v-show="tab===2" style="padding:16px">
+    <div class="flex gap-2 mb-4">
+      <select v-model="report.device" class="flex-1"><option v-for="d in devices" :key="d.code" :value="d.code">{{d.name}}</option></select>
+      <select v-model="report.range" class="flex-1" @change="report.startDt='';report.endDt=''"><option value="1h">近1小时</option><option value="6h">近6小时</option><option value="24h">近24小时</option><option value="7d">近7天</option><option value="30d">近30天</option><option value="custom">自定义</option></select>
+    </div>
+    <div v-if="report.range==='custom'" class="flex gap-2 mb-4">
+      <input type="datetime-local" v-model="report.startDt" class="flex-1">
+      <input type="datetime-local" v-model="report.endDt" class="flex-1">
+    </div>
+    <button @click="loadReport" class="w-full btn btn-primary mb-4">查询</button>
+    <div v-if="reportData.length" class="card overflow-x-auto">
+      <div class="flex justify-end" style="padding:8px"><button @click="exportCSV" class="text-xs text-exceed">📥 导出 CSV</button></div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-sub" style="background:var(--bg)"><th>时间</th><th style="text-align:right">TSP</th></tr></thead>
+        <tbody><tr v-for="r in reportData" :key="r.Date" style="border-top:1px solid rgba(69,71,90,.5)"><td class="text-sub">{{fmtTime(r.Date)}}</td><td style="text-align:right">{{r.TSP==null?'--':r.TSP}}</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 设置Tab -->
+  <div v-show="tab===3" style="padding:16px">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div><label class="text-sm text-sub" style="display:block;margin-bottom:4px">API 地址</label><input type="text" v-model="settings.apiUrl"></div>
+      <div><label class="text-sm text-sub" style="display:block;margin-bottom:4px">刷新间隔（秒）</label><input type="number" v-model.number="settings.interval" min="3" max="300"></div>
+      <div><label class="text-sm text-sub" style="display:block;margin-bottom:4px">阈值（mg/Nm³）</label><input type="number" v-model.number="settings.threshold" min="1"></div>
+      <div class="flex items-center justify-between"><span class="text-sm">浏览器通知</span><button @click="toggleNotification" class="switch" :class="settings.notification?'switch-on':'switch-off'"><span class="switch-dot"></span></button></div>
+      <button @click="saveSettings" class="w-full btn btn-primary">保存</button>
+      <div v-if="saveMsg" class="text-center text-normal text-sm">{{saveMsg}}</div>
+      <div class="text-xs text-sub text-center">v1.0 · EPMS-TSP监控</div>
+    </div>
+  </div>
+
+  <!-- 底部导航 -->
+  <nav class="fixed" style="bottom:0;left:0;right:0;background:rgba(49,50,68,.95);backdrop-filter:blur(8px);border-top:1px solid var(--border);display:flex;z-index:50">
+    <button v-for="(t,i) in tabs" :key="i" @click="tab=i" style="flex:1;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px" :style="tab===i?'color:var(--exceed)':'color:var(--sub)'">
+      <span style="font-size:18px">{{t.icon}}</span><span class="text-xs">{{t.label}}</span>
+    </button>
+  </nav>
+</div>
+<script>
+const{createApp,ref,reactive,computed,onMounted,onUnmounted,watch,nextTick}=Vue;
+createApp({
+setup(){
+  const devices=[{code:'TSP_347',name:'可逆皮带'},{code:'TSP_346',name:'给煤机皮带'}];
+  const tabs=[{icon:'📡',label:'监控'},{icon:'🔔',label:'告警'},{icon:'📊',label:'报表'},{icon:'⚙️',label:'设置'}];
+  const tab=ref(0),connected=ref(false),token=ref(localStorage.getItem('tsp_token')||'');
+  const dataCache=reactive({}),tableDevice=ref('TSP_347'),chartRange=ref('60m');
+  const chartInstance=ref(null);let refreshTimer=null,failCount=0;
+  const alertFilter=reactive({device:'all',type:'all',days:'7'});
+  let alerts=JSON.parse(localStorage.getItem('tsp_alerts')||'[]');
+  const forceAlertUpdate=ref(0);
+  const filteredAlerts=computed(()=>{forceAlertUpdate.value;const now=Date.now();return alerts.filter(a=>{if(alertFilter.device!=='all'&&a.device!==alertFilter.device)return false;if(alertFilter.type!=='all'&&a.type!==alertFilter.type)return false;if(alertFilter.days!=='0'&&now-a.ts>parseInt(alertFilter.days)*86400000)return false;return true}).sort((a,b)=>b.ts-a.ts)});
+  const report=reactive({device:'TSP_347',range:'24h',startDt:'',endDt:''});
+  const reportData=ref([]);
+  const saved=JSON.parse(localStorage.getItem('tsp_settings')||'null')||{};
+  const settings=reactive({apiUrl:saved.apiUrl||'/api',interval:saved.interval||10,threshold:saved.threshold||400,notification:saved.notification||false});
+  const saveMsg=ref('');
+  const globalStatus=computed(()=>{let w='normal';for(const d of devices){const s=getDeviceStatus(d.code);if(s==='offline')return'offline';if(s==='exceed'&&w!=='interrupt')w='exceed';if(s==='interrupt')w='interrupt'}return connected.value?w:'offline'});
+  const statusColor=computed(()=>({normal:'#a6e3a1',exceed:'#89b4fa',interrupt:'#fab387',offline:'#f38ba8'}[globalStatus.value]));
+  const statusText=computed(()=>({normal:'运行正常',exceed:'数据超标',interrupt:'数据中断',offline:'已离线'}[globalStatus.value]));
+
+  function getLatestValue(c){const a=dataCache[c];if(!a||!a.length)return'--';return a[a.length-1].TSP==null?'--':a[a.length-1].TSP}
+  function getDeviceStatus(c){if(!connected.value)return'offline';const a=dataCache[c];if(!a||!a.length)return'offline';const l=a[a.length-1];if(l.TSP==null)return'interrupt';if(l.TSP>settings.threshold)return'exceed';return'normal'}
+  function getValueColor(c){return{normal:'#a6e3a1',exceed:'#89b4fa',interrupt:'#fab387',offline:'#f38ba8'}[getDeviceStatus(c)]||'#cdd6f4'}
+  function statusLabel(c){return{normal:'',exceed:'超标',interrupt:'中断',offline:'离线'}[getDeviceStatus(c)]||''}
+  function alertTypeLabel(t){return{exceed:'超标',interrupt:'中断',offline:'离线'}[t]||t}
+  function fmtTime(t){if(!t)return'--';const d=new Date(t);return(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+  function fmtTimeFull(t){if(!t)return'--';const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')}
+  function getTableData(c){return(dataCache[c]||[]).slice(-10).reverse()}
+  function addAlert(device,code,type,detail){alerts.unshift({id:Date.now()+Math.random(),device,type,detail,time:new Date().toISOString(),ts:Date.now()});if(alerts.length>500)alerts=alerts.slice(0,500);localStorage.setItem('tsp_alerts',JSON.stringify(alerts));forceAlertUpdate.value++}
+
+  async function login(){try{const r=await fetch('/api/base/SysLogin/LoginWithoutCode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:'00008323',password:'df66717d95cbcea8e2fe13ef3ed23b21'})});const j=await r.json();if(j.ResultType===200&&j.Data&&j.Data.Token){token.value=j.Data.Token;localStorage.setItem('tsp_token',j.Data.Token);return true}return false}catch(e){return false}}
+
+  var deviceOffline={};
+  async function fetchData(code,pageSize,step){if(!token.value)return null;try{const r=await fetch('/api/EPMS/Emission/History/QueryByPage',{method:'POST',headers:{'Content-Type':'application/json','authorization':token.value},body:JSON.stringify({deviceType:'tsp',DeviceCode:code,pageIndex:1,pageSize:pageSize||1,step:step||60})});const j=await r.json();if(j.ResultType===200&&j.Data&&j.Data.Page){connected.value=true;failCount=0;return j.Data.Page}return null}catch(e){failCount++;connected.value=false;return null}}
+
+  var isFirstRefresh=true;
+  async function refreshAll(){
+    const is24h=chartRange.value==='24h';
+    const step=is24h?3600:60;
+    const count=is24h?24:60;
+    for(const d of devices){
+      const nd=await fetchData(d.code,isFirstRefresh?count:1,step);
+      if(!nd||!nd.length){
+        if(!deviceOffline[d.code]){deviceOffline[d.code]=true;addAlert(d.name,d.code,'offline','设备 '+d.code+' 无数据上传')}
+        continue;
+      }
+      if(deviceOffline[d.code]){deviceOffline[d.code]=false;addAlert(d.name,d.code,'normal','设备 '+d.code+' 数据恢复正常')}
+      const old=dataCache[d.code]||[];
+      const pv=old.length?old[old.length-1].TSP:null;
+      if(isFirstRefresh){
+        dataCache[d.code]=fillGaps(nd,step,count);
+      }else{
+        const np=nd[0];
+        if(old.length>0&&np.Date===old[old.length-1].Date)continue;
+        old.push(np);
+        if(old.length>count)old.splice(0,old.length-count);
+        dataCache[d.code]=fillGaps(old,step,count);
+      }
+      const newPoint=nd[0];const nv=newPoint.TSP;
+      if(nv!=null&&nv>settings.threshold&&(!pv||pv<=settings.threshold))addAlert(d.name,d.code,'exceed','TSP值 '+nv+' 超过阈值 '+settings.threshold);
+      if(nv==null&&pv!=null)addAlert(d.name,d.code,'interrupt','数据中断');
+    }
+    isFirstRefresh=false;
+    for(const d of devices){if(dataCache[d.code])localStorage.setItem('tsp_cache_'+d.code,JSON.stringify(dataCache[d.code]))}
+    if(tab.value===0)nextTick(updateChart);
+  }
+
+  // Fill missing time points with 0
+  function fillGaps(rawData,stepMs,count){
+    if(!rawData||!rawData.length)return[];
+    var sorted=rawData.slice().sort(function(a,b){return Date.parse(a.Date)-Date.parse(b.Date)});
+    var result=[];
+    var lastTs=Date.parse(sorted[sorted.length-1].Date);
+    var startTs=lastTs-(count-1)*stepMs*1000;
+    // Build lookup
+    var lookup={};
+    sorted.forEach(function(r){lookup[Date.parse(r.Date)]={TSP:r.TSP,Date:r.Date}});
+    for(var i=0;i<count;i++){
+      var ts=startTs+i*stepMs*1000;
+      var dt=new Date(ts);
+      var dateStr=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0')+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')+':00';
+      var matched=lookup[Date.parse(dateStr)];
+      if(matched){result.push({TSP:matched.TSP,Date:dateStr})}else{result.push({TSP:0,Date:dateStr})}
+    }
+    return result;
+  }
+
+  function startRefresh(){if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,settings.interval*1000)}
+
+  function switchRange(r){chartRange.value=r;isFirstRefresh=true;refreshAll()}
+
+  function updateChart(){
+    const el=document.getElementById('chart');if(!el)return;
+    if(!chartInstance.value||chartInstance.value.isDisposed())chartInstance.value=echarts.init(el,null,{renderer:'canvas'});
+    const c=chartInstance.value,colors=['#89b4fa','#a6e3a1'];
+    const seriesData=[];
+    for(let i=0;i<devices.length;i++){
+      const d=devices[i];
+      const arr=(dataCache[d.code]||[]).map(r=>{var ts=Date.parse(r.Date);return isNaN(ts)?null:[ts,r.TSP]}).filter(Boolean);
+      seriesData.push(arr);
+    }
+    const allVals=seriesData.flat().map(p=>p[1]).filter(v=>v!=null);
+    const yMax=allVals.length?Math.max(Math.max(...allVals)*1.3,settings.threshold*1.2,200):500;
+    c.setOption({notMerge:true,animation:false,backgroundColor:'transparent',grid:{top:20,right:10,bottom:30,left:45},
+      xAxis:{type:'time',axisLine:{lineStyle:{color:'#45475a'}},axisLabel:{color:'#a6adc8',fontSize:10},splitLine:{show:false}},
+      yAxis:{type:'value',name:'mg/Nm³',nameTextStyle:{color:'#a6adc8',fontSize:10},axisLine:{show:false},axisLabel:{color:'#a6adc8',fontSize:10},splitLine:{lineStyle:{color:'#45475a',type:'dashed'}},max:yMax},
+      tooltip:{trigger:'axis',confine:true,show:true,backgroundColor:'rgba(30,30,46,.98)',borderColor:'#89b4fa',textStyle:{color:'#ffffff',fontSize:13,fontWeight:'bold'},
+        formatter:function(p){if(!p||!p.length)return'';var d=new Date(p[0].value[0]);var t=(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');var s='<div style="font-size:13px">'+t+'</div>';p.forEach(function(i){s+='<div style="color:'+i.color+'">● '+i.seriesName+': <b>'+i.value[1]+'</b></div>'});return s}},
+      axisPointer:{type:'cross',crossStyle:{color:'#585b70'},lineStyle:{color:'rgba(137,180,250,.5)'},label:{backgroundColor:'#1e1e2e',color:'#ffffff',fontSize:11,show:true,borderColor:'#89b4fa',borderWidth:1}},
+      legend:{data:devices.map(d=>d.name),textStyle:{color:'#a6adc8',fontSize:11},top:0},
+      series:[
+        {name:devices[0].name,type:'line',smooth:true,animation:false,lineStyle:{width:2,color:colors[0]},itemStyle:{color:colors[0]},data:seriesData[0]},
+        {name:devices[1].name,type:'line',smooth:true,animation:false,lineStyle:{width:2,color:colors[1]},itemStyle:{color:colors[1]},data:seriesData[1]}
+      ]
+    });
+  }
+
+  async function loadReport(){if(!token.value)await login();try{const sm={'1h':60,'6h':360,'24h':1440,'7d':1000,'30d':1000};const ps=sm[report.range]||1000;const r=await fetch('/api/EPMS/Emission/History/QueryByPage',{method:'POST',headers:{'Content-Type':'application/json','authorization':token.value},body:JSON.stringify({deviceType:'tsp',DeviceCode:report.device,pageIndex:1,pageSize:ps,step:60})});const j=await r.json();reportData.value=j.ResultType===200&&j.Data&&j.Data.Page?j.Data.Page:[]}catch(e){reportData.value=[]}}
+  function exportCSV(){if(!reportData.value.length)return;let csv='时间,TSP\n';reportData.value.forEach(r=>{csv+=fmtTimeFull(r.Date)+','+(r.TSP==null?'':r.TSP)+'\n'});const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=report.device+'_report.csv';a.click()}
+  function saveSettings(){localStorage.setItem('tsp_settings',JSON.stringify({...settings}));startRefresh();saveMsg.value='✅ 已保存';setTimeout(()=>saveMsg.value='',2000)}
+  async function toggleNotification(){if(!settings.notification&&typeof Notification!=='undefined'){const p=await Notification.requestPermission();settings.notification=p==='granted'}else{settings.notification=false}}
+
+  onMounted(async()=>{
+    for(const d of devices){try{const c=JSON.parse(localStorage.getItem('tsp_cache_'+d.code)||'[]');if(c.length)dataCache[d.code]=c}catch(e){}}
+    if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    await login();await refreshAll();startRefresh();
+    watch(tab,v=>{if(v===0)nextTick(()=>setTimeout(()=>{if(chartInstance.value&&!chartInstance.value.isDisposed()){chartInstance.value.resize();updateChart()}},300))});
+  });
+  onUnmounted(()=>{if(refreshTimer)clearInterval(refreshTimer);if(chartInstance.value)chartInstance.value.dispose()});
+  return{devices,tabs,tab,connected,statusColor,statusText,dataCache,tableDevice,chartRange,threshold:computed(()=>settings.threshold),alertFilter,filteredAlerts,report,reportData,settings,saveMsg,getLatestValue,getDeviceStatus,getValueColor,statusLabel,alertTypeLabel,fmtTime,getTableData,refreshAll,loadReport,exportCSV,saveSettings,toggleNotification,switchRange};
+}
+}).mount('#app');
+</script>
+</body>
+</html>

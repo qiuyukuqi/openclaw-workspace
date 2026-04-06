@@ -1,0 +1,11 @@
+{
+  "last_alert_time": {
+    "TSP_347_threshold": 1774962180.4295585,
+    "TSP_346_threshold": 1774962181.5524962,
+    "TSP_346_fetch_fail": 1774964811.965327,
+    "TSP_347_fetch_fail": 1774965026.2360091
+  },
+  "last_data_time": null,
+  "last_data_TSP_347": "2026-04-06T11:31:00",
+  "last_data_TSP_346": "2026-04-06T11:55:00"
+}
