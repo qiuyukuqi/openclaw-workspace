@@ -82,19 +82,19 @@ export default definePluginEntry({
             .forEach(function(r) { log.warn("[PATROL] ⚠️ " + r.msg); });
     }
 
-    // ─── Start background patrol ────────────────────────────
-    // Run immediately, then every N ms
-    try {
-      patrolCycle();
-      const timer = setInterval(patrolCycle, interval);
-      // Don't prevent process exit
-      if (timer && typeof (timer as any).unref === "function") {
-        (timer as any).unref();
-      }
-      log.info("[PATROL] Background patrol started (interval: " + interval + "ms)");
-    } catch (e: any) {
-      log.error("[PATROL] Failed to start background patrol: " + String(e));
-    }
+    // ─── Register background service ─────────────────────────
+    api.registerService({
+      id: "proactive-patrol",
+      async start() {
+        log.info("[PATROL] Starting (interval: " + interval + "ms)");
+        patrolCycle();
+        const timer = setInterval(patrolCycle, interval);
+        if (timer && typeof (timer as any).unref === "function") {
+          (timer as any).unref();
+        }
+      },
+      async stop() {},
+    });
 
     // ─── Agent tool: manual patrol ──────────────────────────
     api.registerTool({
